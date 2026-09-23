@@ -99,6 +99,7 @@ Invariants every result must satisfy:
 
 1. **Name** — Urim (runtime/oracle; caveats: "oracle" reads crypto, Mormon association in US) vs. Bezalel (builder/kit) vs. family: Bezalel = kit, Urim = runtime, Thummim/Oholiab = verifier. Check GitHub/PyPI/trademark collisions.
 2. **Persona** — fintech dev who doesn't know day counts, or quant who hates plumbing?
+   - **Resolved (2026-09-23): both, via convention packs + override.** Plugin ships named convention packs (e.g. "USD SOFR OIS standard") as defaults and discloses every assumption in the output; each field can be overridden. First user is me (quant-literate builder). Buyer segmentation is out of scope for now — goals are learning Claude Code + building the product.
 3. **First command** and exactly what exists when it finishes.
 4. **Slice** — IRS confirmed, or munis/fixed income where I know the edge cases cold?
 5. **Stack** — Python + QuantLib only for v0, or C++ path from the start?
