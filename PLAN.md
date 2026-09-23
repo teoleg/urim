@@ -33,52 +33,57 @@ Honest risks:
 
 ## 3. Target user journey (draft — refine in session 1)
 
-> Developer installs the plugin, runs `/new-pricing-service irs`, and ~20 min later has a tested, deployed service: curve build, IRS pricing, DV01, REST + MCP endpoints, and a verifier that blocks wrong numbers from shipping.
+> Developer installs the plugin, runs `/new-pricing-service equity-option`, and ~20 min later has a tested, deployed service: market snapshot load, European option pricing + Greeks, REST + MCP endpoints, and a verifier that blocks wrong numbers from shipping.
 
 ## 4. Architecture (draft)
 
 ```
 plugin/                      # the product
   .claude-plugin/plugin.json
-  skills/                    # bootstrap-curve, add-instrument, conventions, deploy-vercel
+  skills/                    # market-snapshot, add-instrument, conventions, deploy-vercel
   commands/                  # /new-pricing-service, /validate, /deploy
   agents/                    # builder, verifier (independent)
   hooks/                     # test-on-edit, protect-validated-models
   .mcp.json
 engine/                      # Python + QuantLib — what the plugin generates/extends
-  curves/ instruments/ risk/ conventions/
+  market/ instruments/ risk/ conventions/   # instrument = pricer + invariants + golden tests, plugged in as one unit
 service/                     # FastAPI + MCP endpoint over engine
 tests/golden/                # frozen market snapshots + expected results
 ```
 
 Runtime target: **Vercel** (Python functions, deploy via GitHub integration).
 - Fits: QuantLib size is fine (Python bundle limit 500MB; large functions beta up to 5GB).
-- Does not fit: state. Stateless serverless → curves rebuilt per cold start, no in-memory market state, long jobs need Vercel Workflows. OK for v0 demo; not for stateful/low-latency (revisit later — this is where my own infra could differentiate).
+- Does not fit: state. Stateless serverless → market state rebuilt per cold start, no in-memory market state, long jobs need Vercel Workflows. OK for v0 demo; not for stateful/low-latency (revisit later — this is where my own infra could differentiate).
 
-## 5. Vertical slice v0 — vanilla IRS
+## 5. Vertical slice v0 — European equity option
 
-Quotes in (deposits/futures/swaps, dated snapshot) → curve bootstrap → IRS NPV + par rate → DV01 → REST + MCP → independent verification.
+Market snapshot in (spot, risk-free rate, dividend yield, vol, as-of date, snapshot ID) → Black-Scholes price (QuantLib) + Greeks (delta, gamma, vega, theta, rho) → REST + MCP → independent verification.
+
+Architecture stays instrument-agnostic: an instrument is a pricer + its invariants + its golden tests, plugged in as one unit. IRS (curve bootstrap) and munis are later `add-instrument` examples.
 
 Market data: **synthetic or clearly public** snapshots only. No licensed vendor data in the repo.
+
+**Working rule:** nothing external blocks development — no licensed data, no outside references, no waiting on third parties. If something external is needed, stub it synthetically and move on.
 
 ## 6. Verification design (the differentiator)
 
 Verifier subagent (**Thummim**) — independent: does not see the builder's reasoning, reprices with a different method where possible.
 
-Invariants every result must satisfy:
-- Bootstrapped curve reprices every input instrument within tolerance.
-- Discount factors in (0, 1], monotonic non-increasing (flag, don't assume, in negative-rate regimes).
-- Swap priced at its par rate has NPV ≈ 0.
-- DV01: analytic/engine value vs. bump-and-reprice agree within tolerance.
+Invariants every result must satisfy (v0, European equity option):
+- QuantLib price matches an independent closed-form Black-Scholes implementation (plain Python, no QuantLib) within tolerance.
+- Put-call parity holds: C − P = S·e^(−qT) − K·e^(−rT).
+- No-arbitrage bounds: intrinsic value ≤ price ≤ spot (call) / ≤ discounted strike (put).
+- Monotonicity: price non-decreasing in vol and (for calls, q = 0) in expiry.
+- Greeks: analytic/engine delta, gamma, vega vs. bump-and-reprice agree within tolerance.
 - Golden tests: frozen snapshot → frozen expected outputs; any diff fails.
-- Every result carries curve snapshot ID + as-of date + conventions used.
+- Every result carries market snapshot ID + as-of date + conventions used.
 
 ## 7. Guardrails (plugin must refuse)
 
-- Price without a dated, identified curve snapshot.
+- Price without a dated, identified market snapshot.
 - Deploy without golden tests + verifier passing.
 - Edit validated models (`engine/**/validated/`) without an explicit ADR.
-- Silently assume conventions (day count, calendar, roll, payment freq) — must state or ask.
+- Silently assume conventions (day count, calendar, exercise style, settlement) — must use a named convention pack and disclose it, or ask.
 - Commit secrets or licensed data.
 
 ## 8. Milestones = Claude Code curriculum
@@ -102,6 +107,7 @@ Invariants every result must satisfy:
    - **Resolved (2026-09-23): both, via convention packs + override.** Plugin ships named convention packs (e.g. "USD SOFR OIS standard") as defaults and discloses every assumption in the output; each field can be overridden. First user is me (quant-literate builder). Buyer segmentation is out of scope for now — goals are learning Claude Code + building the product.
 3. **First command** and exactly what exists when it finishes.
 4. **Slice** — IRS confirmed, or munis/fixed income where I know the edge cases cold?
+   - **Resolved (2026-09-23): European equity option (Black-Scholes).** Smallest domain, fully independent verification (closed form + textbook invariants), no data blockers. Architecture instrument-agnostic; IRS/munis later. See §5 working rule.
 5. **Stack** — Python + QuantLib only for v0, or C++ path from the start?
 6. **Open vs. closed** — open core + paid layer, or closed from day one? What is the paid part?
 7. **Verification depth for v0** — which invariants are blocking vs. warnings?
