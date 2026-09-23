@@ -73,7 +73,7 @@ Invariants every result must satisfy (v0, European equity option):
 - QuantLib price matches an independent closed-form Black-Scholes implementation (plain Python, no QuantLib) within tolerance.
 - Put-call parity holds: C − P = S·e^(−qT) − K·e^(−rT).
 - No-arbitrage bounds: intrinsic value ≤ price ≤ spot (call) / ≤ discounted strike (put).
-- Monotonicity: price non-decreasing in vol and (for calls, q = 0) in expiry.
+- Monotonicity: price non-decreasing in vol and (for calls with q = 0, r ≥ 0) in expiry.
 - Greeks: analytic/engine delta, gamma, vega vs. bump-and-reprice agree within tolerance.
 - Golden tests: frozen snapshot → frozen expected outputs; any diff fails.
 - Every result carries market snapshot ID + as-of date + conventions used.
@@ -94,7 +94,7 @@ Invariants every result must satisfy (v0, European equity option):
 | M1 | Engine slice + golden tests | plan mode, iterative build, test loop |
 | M2 | Test-on-edit + protect-validated hooks | **hooks** (PostToolUse, PreToolUse) |
 | M3 | Thummim verifier | **subagents** |
-| M4 | Domain skills (curve, instrument, conventions) | **skills** |
+| M4 | Domain skills (market snapshot, instrument, conventions) | **skills** |
 | M5 | /new-pricing-service, /validate, /deploy | **slash commands** |
 | M6 | FastAPI + MCP endpoint, Vercel deploy via GitHub | **MCP server**, deploy workflow |
 | M7 | Package as plugin + local marketplace; install into a clean repo and run §3 end to end | **plugins, marketplace** — the real acceptance test |
@@ -104,7 +104,7 @@ Invariants every result must satisfy (v0, European equity option):
 
 1. **Name** — Urim (runtime/oracle; caveats: "oracle" reads crypto, Mormon association in US) vs. Bezalel (builder/kit) vs. family: Bezalel = kit, Urim = runtime, Thummim/Oholiab = verifier. Check GitHub/PyPI/trademark collisions.
 2. **Persona** — fintech dev who doesn't know day counts, or quant who hates plumbing?
-   - **Resolved (2026-09-23): both, via convention packs + override.** Plugin ships named convention packs (e.g. "USD SOFR OIS standard") as defaults and discloses every assumption in the output; each field can be overridden. First user is me (quant-literate builder). Buyer segmentation is out of scope for now — goals are learning Claude Code + building the product.
+   - **Resolved (2026-09-23): both, via convention packs + override.** Plugin ships named convention packs (e.g. "US listed equity option, European, ACT/365F, NYSE calendar") as defaults and discloses every assumption in the output; each field can be overridden. First user is me (quant-literate builder). Buyer segmentation is out of scope for now — goals are learning Claude Code + building the product.
 3. **First command** and exactly what exists when it finishes.
 4. **Slice** — IRS confirmed, or munis/fixed income where I know the edge cases cold?
    - **Resolved (2026-09-23): European equity option (Black-Scholes).** Smallest domain, fully independent verification (closed form + textbook invariants), no data blockers. Architecture instrument-agnostic; IRS/munis later. See §5 working rule.
