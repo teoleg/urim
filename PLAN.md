@@ -6,7 +6,7 @@ Seed brief carried over from a design chat (2026-09-23). Read fully before doing
 
 1. **Do not scaffold yet.** Interview me first. I want two-way dialog on complex problems: ask questions, challenge assumptions, help me sharpen my own questions. No "got it" followed by generated output.
 2. Walk through **§9 Open Decisions** with me, one at a time. Record answers in this file.
-3. Then: derive `CLAUDE.md` from §6–§7, create the GitHub repo with `gh`, commit `PLAN.md` + `CLAUDE.md`, push.
+3. Then: derive `CLAUDE.md` from §6–§7, commit `PLAN.md` + `CLAUDE.md`, push to `main`. (Repo `teoleg/urim` already exists; no `gh` CLI in the cloud environment.)
 4. Work milestone by milestone (§8). Stop at the end of each milestone for review. Never start the next one unasked.
 5. Before building any Claude Code component (plugin, skill, hook, subagent, command, MCP), check the current Claude Code docs for the exact format — do not rely on memory.
 
@@ -33,7 +33,7 @@ Honest risks:
 
 ## 3. Target user journey (draft — refine in session 1)
 
-> Developer installs the plugin, runs `/new-pricing-service equity-option`, and ~20 min later has a tested, deployed service: market snapshot load, European option pricing + Greeks, REST + MCP endpoints, and a verifier that blocks wrong numbers from shipping.
+> Developer installs the plugin, runs `/new-pricing-service equity-option`, and ~20 min later has a tested service running locally (deploy is a separate, gated `/deploy`): market snapshot load, European option pricing + Greeks, REST + MCP endpoints, and a verifier that blocks wrong numbers from shipping.
 
 ## 4. Architecture (draft)
 
@@ -103,14 +103,19 @@ Invariants every result must satisfy (v0, European equity option):
 ## 9. Open decisions (resolve in session 1)
 
 1. **Name** — Urim (runtime/oracle; caveats: "oracle" reads crypto, Mormon association in US) vs. Bezalel (builder/kit) vs. family: Bezalel = kit, Urim = runtime, Thummim/Oholiab = verifier. Check GitHub/PyPI/trademark collisions.
+   - **Resolved for now (2026-09-23):** Urim = repo/working name, Thummim = verifier. Collision/trademark checks deferred until before any public release.
 2. **Persona** — fintech dev who doesn't know day counts, or quant who hates plumbing?
    - **Resolved (2026-09-23): both, via convention packs + override.** Plugin ships named convention packs (e.g. "US listed equity option, European, ACT/365F, NYSE calendar") as defaults and discloses every assumption in the output; each field can be overridden. First user is me (quant-literate builder). Buyer segmentation is out of scope for now — goals are learning Claude Code + building the product.
 3. **First command** and exactly what exists when it finishes.
+   - **Resolved (2026-09-23): local only.** `/new-pricing-service equity-option` ends with: pricer + invariants + convention pack in `engine/instruments/equity_option/`, a synthetic market snapshot, green golden tests, a Thummim report (`verification/report.md`), and the service running locally answering a sample request. `/deploy` is separate and refuses unless golden tests + Thummim are green.
 4. **Slice** — IRS confirmed, or munis/fixed income where I know the edge cases cold?
    - **Resolved (2026-09-23): European equity option (Black-Scholes).** Smallest domain, fully independent verification (closed form + textbook invariants), no data blockers. Architecture instrument-agnostic; IRS/munis later. See §5 working rule.
 5. **Stack** — Python + QuantLib only for v0, or C++ path from the start?
+   - **Resolved (2026-09-23): Python + QuantLib only.** No C++ path in v0.
 6. **Open vs. closed** — open core + paid layer, or closed from day one? What is the paid part?
+   - **Deferred (2026-09-23).** Choose a license before M7. Note: `teoleg/urim` is currently **public** on GitHub — switching it to private (repo Settings → Danger Zone) is an open action for the owner.
 7. **Verification depth for v0** — which invariants are blocking vs. warnings?
+   - **Resolved (2026-09-23).** Blocking: QuantLib vs. independent closed form, put-call parity, no-arbitrage bounds, monotonicity, golden diffs, missing snapshot ID/date/conventions. Warning (v0 only): Greeks vs. bump-and-reprice — promoted to blocking once tolerances are calibrated.
 
 ## 10. Non-goals (v0)
 
