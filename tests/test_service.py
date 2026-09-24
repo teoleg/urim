@@ -67,6 +67,17 @@ def test_price_refusals(client, change, status, fragment):
     assert fragment in r.text
 
 
+def test_unknown_path_reports_what_the_app_received(client):
+    """Hosting/routing problems must be diagnosable: a 404 echoes the path the app saw."""
+    r = client.get("/api/index/health")
+    assert r.status_code == 404 and r.json()["path"] == "/api/index/health"
+
+
+def test_unknown_snapshot_404_keeps_its_reason(client):
+    r = client.post("/price", json={**REQ, "snapshot_id": "NOPE"})
+    assert r.status_code == 404 and "unknown snapshot_id" in r.json()["detail"]
+
+
 def test_raw_market_numbers_are_not_accepted(client):
     """Extra fields like spot/vol are ignored: prices come only from the identified snapshot."""
     a = client.post("/price", json=REQ).json()

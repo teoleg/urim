@@ -7,7 +7,8 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 
@@ -82,4 +83,14 @@ def price(req: PriceRequest) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-app.mount("/", mcp_app)  # after the REST routes, so they take precedence; serves /mcp
+# Serve MCP at exactly /mcp (not a catch-all mount), so unknown paths get the JSON 404 below.
+app.router.routes.extend(r for r in mcp_app.routes if getattr(r, "path", None) == "/mcp")
+
+
+@app.exception_handler(404)
+async def not_found(request: Request, exc: Exception) -> JSONResponse:
+    # Echo the path the app actually received: makes hosting/routing problems diagnosable.
+    detail = getattr(exc, "detail", "Not Found")
+    return JSONResponse(status_code=404, content={
+        "detail": detail, "path": request.url.path, "root_path": request.scope.get("root_path", ""),
+        "known_paths": ["/health", "/packs", "/snapshots", "/price", "/mcp", "/docs"]})
