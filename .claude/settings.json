@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest *)",
+      "Bash(python -m pytest *)",
+      "Bash(python -m engine.cli *)",
+      "Bash(pip install *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(secrets/**)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(secrets/**)"
+    ]
+  }
+}

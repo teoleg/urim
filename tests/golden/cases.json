@@ -1,0 +1,13 @@
+{
+  "note": "Option cases priced against every golden snapshot. Expiries are NYSE business days.",
+  "cases": [
+    {"id": "call-atm-1y",  "option_type": "call", "strike": 100.0, "expiry": "2027-09-24"},
+    {"id": "put-atm-1y",   "option_type": "put",  "strike": 100.0, "expiry": "2027-09-24"},
+    {"id": "call-itm-3m",  "option_type": "call", "strike": 80.0,  "expiry": "2026-12-24"},
+    {"id": "put-otm-3m",   "option_type": "put",  "strike": 80.0,  "expiry": "2026-12-24"},
+    {"id": "call-otm-3m",  "option_type": "call", "strike": 120.0, "expiry": "2026-12-24"},
+    {"id": "put-itm-3m",   "option_type": "put",  "strike": 120.0, "expiry": "2026-12-24"},
+    {"id": "call-otm-5y",  "option_type": "call", "strike": 130.0, "expiry": "2031-09-24"},
+    {"id": "put-deep-itm-5y", "option_type": "put", "strike": 200.0, "expiry": "2031-09-24"}
+  ]
+}

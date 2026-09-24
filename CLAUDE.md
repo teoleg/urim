@@ -4,7 +4,8 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M0** (repo + PLAN.md + CLAUDE.md). Nothing is scaffolded yet.
+- Milestone: **M1 done** (engine slice + golden tests), awaiting review. Next: M2 hooks.
+- The independent closed-form reprice does not exist yet; it is Thummim's (M3), written without reading the pricer.
 - v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
 
@@ -15,6 +16,18 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 - Before building any Claude Code component (plugin, skill, hook, subagent, command, MCP server, settings), check the current Claude Code docs for the exact format. Do not rely on memory.
 - **Nothing external blocks development.** No licensed data, no outside references, no waiting on third parties. If something external is needed, stub it synthetically and move on.
 - Two-way dialog: challenge assumptions and ask when a decision is genuinely the owner's. Record decisions in `PLAN.md` §9.
+
+## Commands
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
+.venv/bin/python -m pytest -q                                   # all tests
+.venv/bin/python -m engine.cli price --snapshot tests/golden/snapshots/SYN-EQ-2026-09-24.json \
+  --type call --strike 100 --expiry 2027-09-24 --pack EQ-EURO-US-v1
+.venv/bin/python tools/freeze_golden.py SNAPSHOT_ID             # one-way; refuses to overwrite
+```
+
+Golden expected values in M1 are a regression freeze made by the engine itself, not an independent proof.
 
 ## Domain rules (guardrails — refuse, don't work around)
 
@@ -33,7 +46,7 @@ Thummim is the independent verifier: it does not see the builder's reasoning and
 Blocking invariants (v0):
 - QuantLib price matches the independent closed form within tolerance.
 - Put-call parity: C − P = S·e^(−qT) − K·e^(−rT).
-- No-arbitrage bounds: intrinsic ≤ price ≤ spot (call) / ≤ discounted strike (put).
+- No-arbitrage bounds (European): max(S·e^(−qT) − K·e^(−rT), 0) ≤ call ≤ S·e^(−qT); max(K·e^(−rT) − S·e^(−qT), 0) ≤ put ≤ K·e^(−rT). Undiscounted intrinsic is *not* a lower bound for European options.
 - Monotonicity: price non-decreasing in vol; calls non-decreasing in expiry when q = 0, r ≥ 0.
 - Golden tests: frozen snapshot → frozen expected outputs; any diff fails.
 - Snapshot ID, as-of date and conventions present on every result.

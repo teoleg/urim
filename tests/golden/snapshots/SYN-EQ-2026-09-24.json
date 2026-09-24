@@ -1,0 +1,11 @@
+{
+  "snapshot_id": "SYN-EQ-2026-09-24",
+  "as_of": "2026-09-24",
+  "underlying": "SYNTH",
+  "spot": 100.0,
+  "rate": 0.04,
+  "div_yield": 0.015,
+  "vol": 0.25,
+  "synthetic": true,
+  "source": "Hand-made synthetic snapshot for golden tests. Not market data."
+}

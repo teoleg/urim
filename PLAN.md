@@ -72,7 +72,7 @@ Verifier subagent (**Thummim**) — independent: does not see the builder's reas
 Invariants every result must satisfy (v0, European equity option):
 - QuantLib price matches an independent closed-form Black-Scholes implementation (plain Python, no QuantLib) within tolerance.
 - Put-call parity holds: C − P = S·e^(−qT) − K·e^(−rT).
-- No-arbitrage bounds: intrinsic value ≤ price ≤ spot (call) / ≤ discounted strike (put).
+- No-arbitrage bounds (European): max(S·e^(−qT) − K·e^(−rT), 0) ≤ call ≤ S·e^(−qT); max(K·e^(−rT) − S·e^(−qT), 0) ≤ put ≤ K·e^(−rT). (Corrected in M1: undiscounted intrinsic is not a lower bound for European options — a deep ITM European put can be worth less than K − S.)
 - Monotonicity: price non-decreasing in vol and (for calls with q = 0, r ≥ 0) in expiry.
 - Greeks: analytic/engine delta, gamma, vega vs. bump-and-reprice agree within tolerance.
 - Golden tests: frozen snapshot → frozen expected outputs; any diff fails.
