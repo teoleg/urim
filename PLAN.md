@@ -113,7 +113,7 @@ Invariants every result must satisfy (v0, European equity option):
 5. **Stack** — Python + QuantLib only for v0, or C++ path from the start?
    - **Resolved (2026-09-23): Python + QuantLib only.** No C++ path in v0.
 6. **Open vs. closed** — open core + paid layer, or closed from day one? What is the paid part?
-   - **Deferred (2026-09-23).** Choose a license before M7. Note: `teoleg/urim` is currently **public** on GitHub — switching it to private (repo Settings → Danger Zone) is an open action for the owner.
+   - **Deferred (2026-09-23).** Choose a license before M7. Repo `teoleg/urim` is public; owner accepted this (2026-09-24).
 7. **Verification depth for v0** — which invariants are blocking vs. warnings?
    - **Resolved (2026-09-23).** Blocking: QuantLib vs. independent closed form, put-call parity, no-arbitrage bounds, monotonicity, golden diffs, missing snapshot ID/date/conventions. Warning (v0 only): Greeks vs. bump-and-reprice — promoted to blocking once tolerances are calibrated.
 
