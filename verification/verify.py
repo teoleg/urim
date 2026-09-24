@@ -25,7 +25,7 @@ from reference.black_scholes import bsm, year_fraction_act365f  # noqa: E402
 PYTHON = os.path.join(ROOT, ".venv", "bin", "python")
 SNAPSHOT_DIR = os.path.join(ROOT, "tests", "golden", "snapshots")
 CASES_FILE = os.path.join(ROOT, "tests", "golden", "cases.json")
-PACK = "EQ-EURO-US-v1"
+PACK = "EQ-EURO-US-v1"      # pack required by the task for all golden cases
 
 # Tolerances (never loosen these to make a check pass).
 PRICE_REL = 1e-8          # x max(1, spot)
@@ -38,11 +38,50 @@ GREEKS = ("delta", "gamma", "vega", "theta", "rho")
 
 # Interpretation of the engine's disclosed conventions and units.
 EXPECTED_DAY_COUNT = "ACT/365F"
+# Every disclosed convention field the reference depends on, with the value(s) it implements.
+# Anything else -> blocking "conventions_supported" failure (never silently guess).
+SUPPORTED_CONVENTIONS = {
+    "day_count": ("ACT/365F",),
+    "exercise": ("European",),
+    "rate_compounding": ("continuous, flat",),
+    "dividend_model": ("continuous yield, flat",),
+    "vol_model": ("Black-Scholes, flat",),
+}
+SUPPORTED_SETTLEMENT_PREFIX = "none"
+SUPPORTED_OPTION_TYPES = ("call", "put")
 EXPECTED_UNITS_HINTS = {
     "vega": "per 1.00",
     "theta": "per year",
     "rho": "per 1.00",
 }
+
+
+def _any_snapshot() -> str:
+    names = sorted(f for f in os.listdir(SNAPSHOT_DIR) if f.endswith(".json"))
+    return os.path.join(SNAPSHOT_DIR, names[0])
+
+
+def discover_packs() -> list[str]:
+    """Ask the black-box CLI which convention packs it knows (via its error message)."""
+    proc = subprocess.run(
+        [PYTHON, "-m", "engine.cli", "price", "--snapshot", _any_snapshot(), "--type", "call",
+         "--strike", "1", "--expiry", "2000-01-01", "--pack", "__THUMMIM_PROBE__"],
+        cwd=ROOT, capture_output=True, text=True)
+    text = proc.stderr + proc.stdout
+    marker = "known:"
+    if marker not in text:
+        return []
+    tail = text.split(marker, 1)[1].strip().splitlines()[0]
+    return [p.strip() for p in tail.split(",") if p.strip()]
+
+
+def discover_option_types() -> list[str]:
+    """Option types the CLI accepts, parsed from its help text."""
+    proc = subprocess.run([PYTHON, "-m", "engine.cli", "price", "--help"],
+                          cwd=ROOT, capture_output=True, text=True)
+    import re
+    m = re.search(r"--type \{([^}]*)\}", proc.stdout)
+    return [x.strip() for x in m.group(1).split(",")] if m else []
 
 
 def run_engine(snapshot_path: str, option_type: str, strike: float, expiry: str) -> dict:
@@ -120,12 +159,21 @@ def verify_combo(snap: dict, snap_path: str, case: dict, engine_cache: dict) -> 
     checks.append(check("metadata_present", not missing and not mismatches, True,
                         missing=missing, mismatches=mismatches))
 
-    # Day count: use what the engine discloses; refuse to guess if it's something else.
-    day_count = conv.get("day_count") if isinstance(conv, dict) else None
-    if day_count != EXPECTED_DAY_COUNT:
-        checks.append(check("day_count_supported", False, True,
-                            error=f"engine discloses day_count={day_count!r}; reference implements "
-                                  f"{EXPECTED_DAY_COUNT} only"))
+    # Conventions: use what the engine discloses; refuse to guess if the reference
+    # does not implement a disclosed convention.
+    conv_issues = []
+    if not isinstance(conv, dict):
+        conv_issues.append(f"conventions not a mapping: {conv!r}")
+    else:
+        for field, allowed in SUPPORTED_CONVENTIONS.items():
+            if conv.get(field) not in allowed:
+                conv_issues.append(f"{field}={conv.get(field)!r} (reference implements {allowed})")
+        if not str(conv.get("settlement", "")).startswith(SUPPORTED_SETTLEMENT_PREFIX):
+            conv_issues.append(f"settlement={conv.get('settlement')!r} (reference implements none)")
+    if otype not in SUPPORTED_OPTION_TYPES:
+        conv_issues.append(f"option_type={otype!r} not implemented by reference")
+    checks.append(check("conventions_supported", not conv_issues, True, issues=conv_issues))
+    if conv_issues:
         return result
 
     # Units: confirm the disclosed units match the reference's units.
@@ -243,6 +291,20 @@ def main() -> int:
         cases = json.load(fh)["cases"]
     snap_files = sorted(f for f in os.listdir(SNAPSHOT_DIR) if f.endswith(".json"))
 
+    coverage_failures = []
+    packs = discover_packs()
+    if packs != [PACK]:
+        coverage_failures.append(
+            f"coverage: engine CLI exposes packs {packs!r}; verification covers only [{PACK!r}]")
+    cli_types = discover_option_types()
+    if sorted(cli_types) != sorted(SUPPORTED_OPTION_TYPES):
+        coverage_failures.append(
+            f"coverage: engine CLI exposes option types {cli_types!r}; reference implements "
+            f"{list(SUPPORTED_OPTION_TYPES)!r}")
+    for case in cases:
+        if case.get("pack", PACK) != PACK or case.get("option_type") not in SUPPORTED_OPTION_TYPES:
+            coverage_failures.append(f"coverage: case {case.get('id')!r} not covered: {case!r}")
+
     results, engine_cache, snapshot_ids = [], {}, []
     for fname in snap_files:
         snap_path = os.path.join(SNAPSHOT_DIR, fname)
@@ -252,7 +314,7 @@ def main() -> int:
         for case in cases:
             results.append(verify_combo(snap, os.path.relpath(snap_path, ROOT), case, engine_cache))
 
-    blocking_failures, warnings = [], []
+    blocking_failures, warnings = list(coverage_failures), []
     max_greek = {g: 0.0 for g in GREEKS}
     for res in results:
         tag = f"{res['snapshot_id']} / {res['case_id']}"
@@ -282,6 +344,8 @@ def main() -> int:
         "pack": PACK,
         "snapshots": snapshot_ids,
         "combinations": len(results),
+        "coverage": {"packs_exposed_by_cli": packs, "option_types_exposed_by_cli": cli_types,
+                     "packs_verified": [PACK], "option_types_verified": list(SUPPORTED_OPTION_TYPES)},
         "engine_cli_calls": len(engine_cache),
         "tolerances": {
             "price_vs_reference": f"{PRICE_REL} * max(1, spot)",
