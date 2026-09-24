@@ -4,7 +4,7 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M1 done** (engine slice + golden tests), awaiting review. Next: M2 hooks.
+- Milestone: **M2 done** (hooks), awaiting review. Next: M3 Thummim verifier subagent.
 - The independent closed-form reprice does not exist yet; it is Thummim's (M3), written without reading the pricer.
 - v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
@@ -28,6 +28,13 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
 ```
 
 Golden expected values in M1 are a regression freeze made by the engine itself, not an independent proof.
+
+## Hooks (`.claude/settings.json`, scripts in `.claude/hooks/`)
+
+- `protect_paths.py` (PreToolUse, Edit|Write|NotebookEdit|Bash): denies edits to `tests/golden/expected/**`; denies `engine/**/validated/**` unless an ADR in `docs/adr/` has `Status: Accepted` and names the path. Fails closed.
+- The Bash part is best effort and crude: any command whose text mentions a protected path must be a known read-only command. It is not a sandbox, and it also blocks harmless commands (e.g. a `git commit -m` whose message names a protected path). Write commit messages to a file and use `git commit -F`.
+- `test_on_edit.py` (PostToolUse, Edit|Write): runs pytest after edits to `engine/`, `tests/`, `tools/`, `pyproject.toml`; failures come back to Claude as a block reason. Does not fire for files changed via Bash.
+- If a hook blocks you, fix the cause. Do not look for another route around it.
 
 ## Domain rules (guardrails — refuse, don't work around)
 
