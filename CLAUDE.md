@@ -4,7 +4,8 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M5 done** (commands), awaiting review. Next: M6 FastAPI + MCP service, Vercel deploy.
+- Milestone: **M6 done locally** (FastAPI + MCP service; Vercel deploy path built but not yet run: needs a Vercel token and vercel.com network access), awaiting review. Next: M7 plugin packaging.
+- Service: `service/core.py` (shared guardrails), `service/app.py` (REST + MCP at `/mcp`), `service/mcp_server.py` (stdio for `.mcp.json`). Market data by snapshot ID only; pack required, no default.
 - Commands (user-invoked skills): `/validate` (tests + Thummim script + thummim agent; writes commit-bound `verification/stamp.json`), `/deploy` (user-only; refuses unless `tools/deploy_gate.py` passes; no target until M6), `/new-pricing-service <instrument>` (user-only; orchestrates the skills; service step M6, scaffold into empty repo M7).
 - Never create or edit `verification/stamp.json` by hand; only `tools/validate.py` writes it.
 - Skills in `.claude/skills/`: `market-snapshot` (with `validate.py`), `conventions` (lists live packs), `add-instrument` (procedure + `checklist.md`). Use them rather than improvising these workflows.
@@ -28,6 +29,8 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
   --type call --strike 100 --expiry 2027-09-24 --pack EQ-EURO-US-v1
 .venv/bin/python tools/freeze_golden.py SNAPSHOT_ID             # one-way; refuses to overwrite
 .venv/bin/python verification/verify.py                         # Thummim's checks; writes verification/report.md
+.venv/bin/uvicorn service.app:app --port 8000                  # REST on :8000, MCP at :8000/mcp
+.venv/bin/python tools/smoke.py http://127.0.0.1:8000           # smoke test vs golden values
 ```
 
 Golden expected values in M1 are a regression freeze made by the engine itself, not an independent proof.
@@ -36,6 +39,7 @@ Golden expected values in M1 are a regression freeze made by the engine itself, 
 
 - `protect_paths.py` (PreToolUse, Edit|Write|NotebookEdit|Bash): denies edits to `tests/golden/expected/**`; denies `engine/**/validated/**` unless an ADR in `docs/adr/` has `Status: Accepted` and names the path. Fails closed.
 - The Bash part is best effort and crude: any command whose text mentions a protected path must be a known read-only command. It is not a sandbox, and it also blocks harmless commands (e.g. a `git commit -m` whose message names a protected path). Write commit messages to a file and use `git commit -F`.
+- `deploy_guard.py` (PreToolUse, Bash): any `vercel` command that can deploy runs `tools/deploy_gate.py` first and is denied if it refuses.
 - `test_on_edit.py` (PostToolUse, Edit|Write): runs pytest after edits to `engine/`, `tests/`, `tools/`, `pyproject.toml`; failures come back to Claude as a block reason. Does not fire for files changed via Bash.
 - If a hook blocks you, fix the cause. Do not look for another route around it.
 

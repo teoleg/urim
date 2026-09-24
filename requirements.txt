@@ -1,0 +1,4 @@
+# Runtime dependencies for the Vercel Python function (mirror of pyproject [project].dependencies)
+QuantLib==1.43
+fastapi==0.141.1
+mcp==2.2.0

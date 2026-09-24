@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": false },
+  "functions": {
+    "api/index.py": { "includeFiles": "tests/golden/snapshots/**" }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+}

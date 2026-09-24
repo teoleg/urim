@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "urim": {
+      "type": "stdio",
+      "command": "${CLAUDE_PROJECT_DIR:-.}/.venv/bin/python",
+      "args": ["-m", "service.mcp_server"]
+    }
+  }
+}

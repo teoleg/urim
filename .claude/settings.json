@@ -26,6 +26,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/deploy_guard.py\"",
+            "timeout": 90
+          }
+        ]
       }
     ],
     "PostToolUse": [

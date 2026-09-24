@@ -51,7 +51,7 @@ service/                     # FastAPI + MCP endpoint over engine
 tests/golden/                # frozen market snapshots + expected results
 ```
 
-Runtime target: **Vercel** (Python functions, deploy via GitHub integration).
+Runtime target: **Vercel** (Python functions). *Changed in M6:* deploy via Vercel CLI from `/deploy` only; GitHub auto-deploy is disabled in `vercel.json` because a push-triggered deploy would bypass the validation gate. M8 may move gating into CI and re-enable Git deploys behind required checks.
 - Fits: QuantLib size is fine (Python bundle limit 500MB; large functions beta up to 5GB).
 - Does not fit: state. Stateless serverless → market state rebuilt per cold start, no in-memory market state, long jobs need Vercel Workflows. OK for v0 demo; not for stateful/low-latency (revisit later — this is where my own infra could differentiate).
 
