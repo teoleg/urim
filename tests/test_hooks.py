@@ -93,6 +93,13 @@ def test_bash_writes_denied(tmp_path, command):
 
 def test_bash_quoted_angle_bracket_is_not_a_redirect(tmp_path):
     assert pre(tmp_path, "Bash", command='grep "a>b" tests/golden/expected/X.json') is None
+
+
+def test_bash_discarding_output_is_not_a_write(tmp_path):
+    """False positive found by the 2026-09-24 acceptance run."""
+    assert pre(tmp_path, "Bash", command="ls tests/golden/expected 2>/dev/null") is None
+    assert pre(tmp_path, "Bash", command="ls tests/golden/expected > /dev/null") is None
+    assert pre(tmp_path, "Bash", command="ls tests/golden/expected > out.txt") == "deny"
     assert pre(tmp_path, "Bash", command="cat tests/golden/expected/X.json # By: A <a@b.com>") is None
 
 

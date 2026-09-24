@@ -84,9 +84,11 @@ def writes_via_shell(command: str) -> bool:
         tokens = list(lexer)
     except ValueError:
         return True  # unbalanced quotes: can't tell, assume the worst
-    for tok in tokens:
+    for i, tok in enumerate(tokens):
         # fd duplication such as 2>&1 lexes as "2", ">&", "1" and is not a write
         if tok == "tee" or (set(tok) <= set("<>&|") and ">" in tok and not tok.startswith(">&")):
+            if i + 1 < len(tokens) and tokens[i + 1] == "/dev/null":
+                continue  # discarding output is not a write
             return True
     return False
 

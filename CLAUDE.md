@@ -5,7 +5,7 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 ## Current state
 
 - Milestone: **M4 done** (domain skills), awaiting review. Next: M5 slash commands.
-- Skills in `.claude/skills/`: `market-snapshot` (with `validate.py`), `conventions` (lists live packs, auto-loads for `engine/conventions/**` and `engine/instruments/**`), `add-instrument` (procedure + `checklist.md`). Use them rather than improvising these workflows.
+- Skills in `.claude/skills/`: `market-snapshot` (with `validate.py`), `conventions` (lists live packs), `add-instrument` (procedure + `checklist.md`). Use them rather than improvising these workflows.
 - v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
 

@@ -44,7 +44,8 @@ def test_skill_frontmatter_parses(skill):
 
 def test_conventions_skill_scoping_fields():
     front = frontmatter(SKILLS / "conventions" / "SKILL.md")
-    assert front["paths"] == ["engine/conventions/**", "engine/instruments/**"]
+    # no `paths`: the 2026-09-24 acceptance run showed it hid the skill from pricing requests
+    assert "paths" not in front
     assert "list_packs.py" in front["allowed-tools"]
 
 

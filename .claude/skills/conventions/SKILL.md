@@ -3,9 +3,6 @@ name: conventions
 description: Choose, disclose, or add market conventions (day count, calendar, exercise style, compounding, settlement) via named convention packs. Use whenever pricing needs conventions, a user states or omits a convention, results must disclose conventions, or code in engine/conventions/ changes.
 when_to_use: Requests like which day count, what calendar, ACT/360 or ACT/365, add a convention pack, or price this option when the user did not name a pack.
 allowed-tools: Bash(*list_packs.py*)
-paths:
-  - "engine/conventions/**"
-  - "engine/instruments/**"
 ---
 
 # Convention packs
