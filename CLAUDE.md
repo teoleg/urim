@@ -4,8 +4,7 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M2 done** (hooks), awaiting review. Next: M3 Thummim verifier subagent.
-- The independent closed-form reprice does not exist yet; it is Thummim's (M3), written without reading the pricer.
+- Milestone: **M3 done** (Thummim verifier), awaiting review. Next: M4 domain skills.
 - v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
 
@@ -25,6 +24,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
 .venv/bin/python -m engine.cli price --snapshot tests/golden/snapshots/SYN-EQ-2026-09-24.json \
   --type call --strike 100 --expiry 2027-09-24 --pack EQ-EURO-US-v1
 .venv/bin/python tools/freeze_golden.py SNAPSHOT_ID             # one-way; refuses to overwrite
+.venv/bin/python verification/verify.py                         # Thummim's checks; writes verification/report.md
 ```
 
 Golden expected values in M1 are a regression freeze made by the engine itself, not an independent proof.
@@ -49,6 +49,11 @@ Golden expected values in M1 are a regression freeze made by the engine itself, 
 ## Verification (Thummim)
 
 Thummim is the independent verifier: it does not see the builder's reasoning and reprices with a different method (plain-Python closed-form Black-Scholes, no QuantLib).
+
+- Subagent: `.claude/agents/thummim.md` (fresh context, `omitClaudeMd`, frontmatter hook `thummim_blinders.py`: engine is a black box via its CLI; writes only under `verification/`).
+- Its code: `verification/reference/black_scholes.py`, `verification/verify.py` (exit 1 on any blocking failure). `tests/test_verification.py` makes its verdict part of pytest.
+- **Builder rule:** don't edit `verification/` yourself. If it looks wrong, delegate to Thummim with a minimal prompt that states the symptom, not your reasoning.
+- Limit: the closed form agrees with QuantLib to ~1e-14, so a convention error shared by both would pass. Thummim's independent protection is its own day-count calculation, parity and bounds.
 
 Blocking invariants (v0):
 - QuantLib price matches the independent closed form within tolerance.
