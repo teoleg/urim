@@ -46,7 +46,13 @@ SUPPORTED_CONVENTIONS = {
     "rate_compounding": ("continuous, flat",),
     "dividend_model": ("continuous yield, flat",),
     "vol_model": ("Black-Scholes, flat",),
+    # Calendar only matters for expiry/settlement adjustment; the reference applies none
+    # (settlement 'none', golden expiries are stated to be business days). Pinned so that a
+    # change of calendar is flagged rather than silently ignored.
+    "calendar": ("NYSE",),
 }
+# Disclosed convention keys that carry no pricing semantics for the reference.
+INFORMATIONAL_CONVENTION_KEYS = ("name", "settlement")
 SUPPORTED_SETTLEMENT_PREFIX = "none"
 SUPPORTED_OPTION_TYPES = ("call", "put")
 EXPECTED_UNITS_HINTS = {
@@ -168,6 +174,10 @@ def verify_combo(snap: dict, snap_path: str, case: dict, engine_cache: dict) -> 
         for field, allowed in SUPPORTED_CONVENTIONS.items():
             if conv.get(field) not in allowed:
                 conv_issues.append(f"{field}={conv.get(field)!r} (reference implements {allowed})")
+        unknown = sorted(set(conv) - set(SUPPORTED_CONVENTIONS) - set(INFORMATIONAL_CONVENTION_KEYS))
+        for field in unknown:
+            conv_issues.append(f"undisclosed-to-reference convention {field}={conv.get(field)!r} "
+                               f"(reference does not implement it; refusing to guess)")
         if not str(conv.get("settlement", "")).startswith(SUPPORTED_SETTLEMENT_PREFIX):
             conv_issues.append(f"settlement={conv.get('settlement')!r} (reference implements none)")
     if otype not in SUPPORTED_OPTION_TYPES:
