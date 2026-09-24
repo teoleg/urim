@@ -1,0 +1,11 @@
+{
+  "snapshot_id": "SYN-EQ-YYYY-MM-DD",
+  "as_of": "YYYY-MM-DD",
+  "underlying": "SYNTH",
+  "spot": 100.0,
+  "rate": 0.04,
+  "div_yield": 0.0,
+  "vol": 0.25,
+  "synthetic": true,
+  "source": "Hand-made synthetic snapshot. Not market data."
+}
