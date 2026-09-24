@@ -4,7 +4,9 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M4 done** (domain skills), awaiting review. Next: M5 slash commands.
+- Milestone: **M5 done** (commands), awaiting review. Next: M6 FastAPI + MCP service, Vercel deploy.
+- Commands (user-invoked skills): `/validate` (tests + Thummim script + thummim agent; writes commit-bound `verification/stamp.json`), `/deploy` (user-only; refuses unless `tools/deploy_gate.py` passes; no target until M6), `/new-pricing-service <instrument>` (user-only; orchestrates the skills; service step M6, scaffold into empty repo M7).
+- Never create or edit `verification/stamp.json` by hand; only `tools/validate.py` writes it.
 - Skills in `.claude/skills/`: `market-snapshot` (with `validate.py`), `conventions` (lists live packs), `add-instrument` (procedure + `checklist.md`). Use them rather than improvising these workflows.
 - v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
