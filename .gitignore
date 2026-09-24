@@ -220,3 +220,4 @@ __marimo__/
 # Thummim reports are regenerated on every run
 verification/report.json
 verification/report.md
+verification/stamp.json
