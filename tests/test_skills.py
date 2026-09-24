@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS = ROOT / ".claude" / "skills"
@@ -26,13 +27,32 @@ def write(tmp_path, name, data):
     return p
 
 
-@pytest.mark.parametrize("skill", ["market-snapshot", "conventions", "add-instrument"])
-def test_skill_has_frontmatter_with_description(skill):
-    text = (SKILLS / skill / "SKILL.md").read_text()
+def frontmatter(path):
+    """Parse YAML frontmatter. Claude Code silently drops ALL fields when the YAML is invalid."""
+    text = path.read_text()
     assert text.startswith("---\n"), "frontmatter must start on line 1"
-    front = text.split("---\n")[1]
-    assert re.search(r"^description: .{40,}", front, re.M)
-    assert re.search(rf"^name: {skill}$", front, re.M)
+    return yaml.safe_load(text.split("---\n")[1])
+
+
+@pytest.mark.parametrize("skill", ["market-snapshot", "conventions", "add-instrument"])
+def test_skill_frontmatter_parses(skill):
+    front = frontmatter(SKILLS / skill / "SKILL.md")
+    assert front["name"] == skill
+    assert len(front["description"]) >= 40
+    assert len(front["description"] + front.get("when_to_use", "")) <= 1536  # listing cap
+
+
+def test_conventions_skill_scoping_fields():
+    front = frontmatter(SKILLS / "conventions" / "SKILL.md")
+    assert front["paths"] == ["engine/conventions/**", "engine/instruments/**"]
+    assert "list_packs.py" in front["allowed-tools"]
+
+
+def test_thummim_agent_frontmatter_parses():
+    front = frontmatter(ROOT / ".claude" / "agents" / "thummim.md")
+    assert front["name"] == "thummim" and front["omitClaudeMd"] is True
+    command = front["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    assert "thummim_blinders.py" in command
 
 
 @pytest.mark.parametrize("skill,files", [

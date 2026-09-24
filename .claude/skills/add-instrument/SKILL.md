@@ -1,7 +1,7 @@
 ---
 name: add-instrument
 description: Add a new financial instrument (e.g. American option, interest-rate swap, fixed-rate bond) to the Urim engine as one pluggable unit - pricer, invariants, convention pack, golden tests - and get it independently verified by Thummim. Use when asked to support, price or add a new instrument or product type.
-when_to_use: "add an IRS", "support American options", "price a bond", "new instrument", "extend the engine to X"
+when_to_use: Requests like add an IRS, support American options, price a bond, new instrument, extend the engine to X.
 argument-hint: "[instrument-name]"
 ---
 

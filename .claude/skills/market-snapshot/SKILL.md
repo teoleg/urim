@@ -1,7 +1,7 @@
 ---
 name: market-snapshot
 description: Create, validate or review a market snapshot, the only market input the Urim engine accepts. Use when someone wants to price something and no suitable snapshot exists, adds or edits a file under tests/golden/snapshots/, or asks where market data comes from.
-when_to_use: "new snapshot", "market data", "price with spot X / vol Y", "add a golden snapshot", "is this data OK to commit"
+when_to_use: Requests like new snapshot, market data, price with spot X and vol Y, add a golden snapshot, is this data OK to commit.
 ---
 
 # Market snapshots
