@@ -4,46 +4,21 @@ Urim is a Claude Code plugin that lets developers build, verify and run a financ
 
 ## Current state
 
-- Milestone: **M6 done locally** (FastAPI + MCP service; Vercel deploy path built but not yet run: needs a Vercel token and vercel.com network access), awaiting review. Next: M7 plugin packaging.
-- Service: `service/core.py` (shared guardrails), `service/app.py` (REST + MCP at `/mcp`), `service/mcp_server.py` (stdio for `.mcp.json`). Market data by snapshot ID only; pack required, no default.
-- Commands (user-invoked skills): `/validate` (tests + Thummim script + thummim agent; writes commit-bound `verification/stamp.json`), `/deploy` (user-only; refuses unless `tools/deploy_gate.py` passes; no target until M6), `/new-pricing-service <instrument>` (user-only; orchestrates the skills; service step M6, scaffold into empty repo M7).
-- Never create or edit `verification/stamp.json` by hand; only `tools/validate.py` writes it.
-- Skills in `.claude/skills/`: `market-snapshot` (with `validate.py`), `conventions` (lists live packs), `add-instrument` (procedure + `checklist.md`). Use them rather than improvising these workflows.
-- v0 slice: **European equity option** (Black-Scholes) — market snapshot → price + Greeks → REST + MCP → independent verification.
+- Milestone: **M6 done locally** (FastAPI + MCP service). Vercel deploy path built; the live deployment answers "Not Found" and needs a routing fix, which needs vercel.com network access and `VERCEL_TOKEN`. Next: M7 plugin packaging.
+- v0 slice: **European equity option** (Black-Scholes): market snapshot → price + Greeks → REST + MCP → independent verification.
 - Stack: **Python + QuantLib only**. No C++.
+- Skills: `market-snapshot`, `conventions`, `add-instrument`. Commands: `/validate`, `/deploy` (user-only), `/new-pricing-service` (user-only). Use them rather than improvising these workflows.
 
 ## How we work
 
 - Work milestone by milestone (`PLAN.md` §8). Stop at the end of each milestone for review. Never start the next milestone unasked.
-- Commit and push to `main`.
-- Before building any Claude Code component (plugin, skill, hook, subagent, command, MCP server, settings), check the current Claude Code docs for the exact format. Do not rely on memory.
+- Commit and push to `main`. Write commit messages to a file and use `git commit -F` (see Hooks).
+- Before building any Claude Code component (plugin, skill, hook, subagent, command, MCP server, settings, rule), check the current Claude Code docs for the exact format. Do not rely on memory.
 - **Nothing external blocks development.** No licensed data, no outside references, no waiting on third parties. If something external is needed, stub it synthetically and move on.
 - Two-way dialog: challenge assumptions and ask when a decision is genuinely the owner's. Record decisions in `PLAN.md` §9.
+- The owner is learning Claude Code by using it: explain which component did what, and prefer letting them trigger things over doing everything for them.
 
-## Commands
-
-```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
-.venv/bin/python -m pytest -q                                   # all tests
-.venv/bin/python -m engine.cli price --snapshot tests/golden/snapshots/SYN-EQ-2026-09-24.json \
-  --type call --strike 100 --expiry 2027-09-24 --pack EQ-EURO-US-v1
-.venv/bin/python tools/freeze_golden.py SNAPSHOT_ID             # one-way; refuses to overwrite
-.venv/bin/python verification/verify.py                         # Thummim's checks; writes verification/report.md
-.venv/bin/uvicorn service.app:app --port 8000                  # REST on :8000, MCP at :8000/mcp
-.venv/bin/python tools/smoke.py http://127.0.0.1:8000           # smoke test vs golden values
-```
-
-Golden expected values in M1 are a regression freeze made by the engine itself, not an independent proof.
-
-## Hooks (`.claude/settings.json`, scripts in `.claude/hooks/`)
-
-- `protect_paths.py` (PreToolUse, Edit|Write|NotebookEdit|Bash): denies edits to `tests/golden/expected/**`; denies `engine/**/validated/**` unless an ADR in `docs/adr/` has `Status: Accepted` and names the path. Fails closed.
-- The Bash part is best effort and crude: any command whose text mentions a protected path must be a known read-only command. It is not a sandbox, and it also blocks harmless commands (e.g. a `git commit -m` whose message names a protected path). Write commit messages to a file and use `git commit -F`.
-- `deploy_guard.py` (PreToolUse, Bash): any `vercel` command that can deploy runs `tools/deploy_gate.py` first and is denied if it refuses.
-- `test_on_edit.py` (PostToolUse, Edit|Write): runs pytest after edits to `engine/`, `tests/`, `tools/`, `pyproject.toml`; failures come back to Claude as a block reason. Does not fire for files changed via Bash.
-- If a hook blocks you, fix the cause. Do not look for another route around it.
-
-## Domain rules (guardrails — refuse, don't work around)
+## Domain rules (guardrails: refuse, don't work around)
 
 - Never price without a dated, identified market snapshot (snapshot ID + as-of date).
 - Never assume conventions silently (day count, calendar, exercise style, settlement). Use a named convention pack and disclose it in the output, or ask.
@@ -52,33 +27,42 @@ Golden expected values in M1 are a regression freeze made by the engine itself, 
 - Never deploy unless golden tests and the Thummim verifier pass.
 - Never commit secrets or licensed market data. Snapshots are synthetic (labelled as such) or clearly public.
 - Never change a golden expected value to make a test pass. A golden diff is a finding to explain, not a number to update.
+- `verification/` belongs to Thummim, the independent verifier subagent. Don't edit it yourself; delegate to the `thummim` agent.
 
-## Verification (Thummim)
+## Area rules (`.claude/rules/`, load when you open matching files)
 
-Thummim is the independent verifier: it does not see the builder's reasoning and reprices with a different method (plain-Python closed-form Black-Scholes, no QuantLib).
+- `engine.md`: pricer contract, immutable convention packs, instruments, golden freeze.
+- `verification.md`: Thummim's territory, builder rule, blocking checks, known limit.
+- `service.md`: one core for REST + MCP, MCP SDK 2.x specifics, deployment.
 
-- Subagent: `.claude/agents/thummim.md` (fresh context, `omitClaudeMd`, frontmatter hook `thummim_blinders.py`: engine is a black box via its CLI; writes only under `verification/`).
-- Its code: `verification/reference/black_scholes.py`, `verification/verify.py` (exit 1 on any blocking failure). `tests/test_verification.py` makes its verdict part of pytest.
-- **Builder rule:** don't edit `verification/` yourself. If it looks wrong, delegate to Thummim with a minimal prompt that states the symptom, not your reasoning.
-- Limit: the closed form agrees with QuantLib to ~1e-14, so a convention error shared by both would pass. Thummim's independent protection is its own day-count calculation, parity and bounds.
+## Hooks (`.claude/settings.json`, scripts in `.claude/hooks/`)
 
-Blocking invariants (v0):
-- QuantLib price matches the independent closed form within tolerance.
-- Put-call parity: C − P = S·e^(−qT) − K·e^(−rT).
-- No-arbitrage bounds (European): max(S·e^(−qT) − K·e^(−rT), 0) ≤ call ≤ S·e^(−qT); max(K·e^(−rT) − S·e^(−qT), 0) ≤ put ≤ K·e^(−rT). Undiscounted intrinsic is *not* a lower bound for European options.
-- Monotonicity: price non-decreasing in vol; calls non-decreasing in expiry when q = 0, r ≥ 0.
-- Golden tests: frozen snapshot → frozen expected outputs; any diff fails.
-- Snapshot ID, as-of date and conventions present on every result.
+- `protect_paths.py` (PreToolUse): denies edits to `tests/golden/expected/**`, and to `engine/**/validated/**` without an accepted ADR. Its Bash check is crude: a command whose text mentions a protected path must be read-only, so a `git commit -m` naming one is blocked too.
+- `deploy_guard.py` (PreToolUse, Bash): deploying `vercel` commands must pass `tools/deploy_gate.py`.
+- `test_on_edit.py` (PostToolUse): runs pytest after edits to `engine/`, `tests/`, `tools/`, `pyproject.toml`.
+- If a hook blocks you, fix the cause. Do not look for another route around it.
 
-Warning only (v0): Greeks vs. bump-and-reprice. Promote to blocking once tolerances are calibrated.
+## Commands
 
-## Planned layout
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # setup
+.venv/bin/python -m pytest -q                                   # all tests
+.venv/bin/python -m engine.cli price --snapshot tests/golden/snapshots/SYN-EQ-2026-09-24.json \
+  --type call --strike 100 --expiry 2027-09-24 --pack EQ-EURO-US-v1
+.venv/bin/python tools/validate.py                              # tests + Thummim script; writes stamp
+.venv/bin/python tools/deploy_gate.py                           # may this commit be deployed?
+.venv/bin/uvicorn service.app:app --port 8000                  # REST on :8000, MCP at :8000/mcp
+.venv/bin/python tools/smoke.py http://127.0.0.1:8000           # smoke test vs golden values
+```
+
+## Layout
 
 ```
-plugin/          # the product: skills, commands, agents, hooks, .mcp.json
-engine/          # Python + QuantLib: market/ instruments/ risk/ conventions/
-service/         # FastAPI + MCP endpoint over engine
-tests/golden/    # frozen market snapshots + expected results
+engine/          # Python + QuantLib: market/ instruments/ conventions/
+service/         # FastAPI + MCP over the engine; api/index.py is the Vercel entry
+verification/    # Thummim's reference and verify.py
+tests/golden/    # frozen synthetic snapshots + expected results
+tools/           # validate, deploy gate, smoke, freeze
+.claude/         # settings, hooks, rules, skills, agents
+plugin/          # (M7) the packaged product
 ```
-
-An instrument is one pluggable unit: pricer + invariants + golden tests + convention pack.
